@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SledMath - planner</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0e1626; color: #e8eef7; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+  main { max-width: 720px; padding: 32px 20px 48px; width: 100%; box-sizing: border-box; }
+  h1 { font-size: 1.9rem; margin: 0 0 4px; }
+  p.sub { color: #a9bcd6; margin: 0 0 20px; }
+  .card { background: #16233a; border: 1px solid #24365a; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+  label { display: block; color: #9fb3cd; font-size: 0.82rem; margin-bottom: 4px; }
+  input, select { width: 100%; box-sizing: border-box; background: #0e1626; border: 1px solid #2c4166; color: #e8eef7; border-radius: 8px; padding: 9px 10px; font-size: 0.95rem; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .presets button { background: #1d2e4d; color: #cfe0f5; border: 1px solid #2c4166; border-radius: 999px; padding: 7px 14px; font-size: 0.85rem; cursor: pointer; }
+  .presets button:hover { background: #273d66; }
+  .out { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .metric { background: #0e1626; border: 1px solid #24365a; border-radius: 10px; padding: 12px 14px; }
+  .metric .v { font-size: 1.35rem; font-weight: 700; color: #7abcff; }
+  .metric .k { color: #9fb3cd; font-size: 0.78rem; margin-top: 2px; }
+  .note { color: #8aa0bd; font-size: 0.82rem; line-height: 1.5; margin-top: 10px; }
+  a.back { color: #7abcff; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>&#128000;&#65038; SledMath</h1>
+  <p class="sub">Sled dog trip planner. Set your team, trail and route; get honest numbers.</p>
+  <div class="presets">
+    <button data-p="weekend">Weekend loop (60 mi)</button>
+    <button data-p="week">Week tour (200 mi)</button>
+    <button data-p="expedition">Expedition (500 mi)</button>
+    <button data-p="coldrace">Cold race (300 mi, -35F)</button>
+  </div>
+  <div class="card">
+    <div class="grid">
+      <div><label>Route miles</label><input id="miles" type="number" value="200" min="1"></div>
+      <div><label>Dogs in team</label><input id="dogs" type="number" value="8" min="1"></div>
+      <div><label>Trail surface</label><select id="surface"><option value="packed" selected>Packed trail</option><option value="fresh">Fresh snow</option><option value="deep">Deep / breaking trail</option><option value="icy">Icy / wind-crust</option></select></div>
+      <div><label>Air temp (F)</label><input id="tempF" type="number" value="10"></div>
+      <div><label>Moving hours per day</label><input id="runHours" type="number" value="8" min="1" step="0.5"></div>
+      <div><label>Avg dog weight (lb)</label><input id="weightLb" type="number" value="50" min="20"></div>
+      <div><label>Workload</label><select id="workload"><option value="easy">Easy</option><option value="tour" selected>Tour</option><option value="hard">Hard</option><option value="race">Race</option></select></div>
+      <div><label>Meat supplement (%)</label><input id="meatPct" type="number" value="20" min="0"></div>
+      <div><label>Layover every N run days</label><input id="layoverEvery" type="number" value="5" min="0"></div>
+      <div><label>Resupply spacing (mi)</label><input id="spacing" type="number" value="60" min="10"></div>
+      <div><label>Sled load (lb)</label><input id="loadLb" type="number" value="420" min="0"></div>
+      <div><label>Kibble kcal per lb</label><input id="kcalPerLb" type="number" value="1500" min="800"></div>
+    </div>
+  </div>
+  <div class="out">
+    <div class="metric"><div class="v" id="o-speed">-</div><div class="k">Honest cruise speed (mph)</div></div>
+    <div class="metric"><div class="v" id="o-daymiles">-</div><div class="k">Miles per day</div></div>
+    <div class="metric"><div class="v" id="o-days">-</div><div class="k">Trip days (incl. layovers)</div></div>
+    <div class="metric"><div class="v" id="o-food">-</div><div class="k">Total trail food (lb)</div></div>
+    <div class="metric"><div class="v" id="o-bags">-</div><div class="k">Drop bags / lb each</div></div>
+    <div class="metric"><div class="v" id="o-pull">-</div><div class="k">Dogs for your load</div></div>
+  </div>
+  <p class="note" id="o-kcal"></p>
+  <p class="note">Speeds assume a trained mid-distance team. Fresh snow, heat, and hills all cost you; dogs do their best work between -10F and 20F. Always carry a day of spare food per leg.</p>
+  <p><a class="back" href="index.html">&larr; Back to SledMath</a></p>
+</main>
+<script src="engine.js"></script>
+<script>
+(function () {
+  var ids = ['miles','dogs','surface','tempF','runHours','weightLb','workload','meatPct','layoverEvery','spacing','loadLb','kcalPerLb'];
+  function num(id) { var v = parseFloat(document.getElementById(id).value); return isFinite(v) ? v : 0; }
+  function opts() {
+    return {
+      miles: num('miles'), dogs: num('dogs'), surface: document.getElementById('surface').value,
+      tempF: num('tempF'), runHours: num('runHours'), weightLb: num('weightLb'),
+      workload: document.getElementById('workload').value, meatPct: num('meatPct'),
+      layoverEvery: num('layoverEvery'), spacing: num('spacing'), kcalPerLb: num('kcalPerLb')
+    };
+  }
+  function compute() {
+    if (typeof SledMath === 'undefined') return;
+    var o = opts();
+    var speed = SledMath.cruiseSpeed(o);
+    var dm = SledMath.dayMiles(o);
+    var days = SledMath.tripDays(o);
+    var food = SledMath.tripFoodLb(o);
+    var bags = SledMath.dropBags(o);
+    var pull = SledMath.dogsForLoad(num('loadLb'), o.surface);
+    document.getElementById('o-speed').textContent = speed + ' mph';
+    document.getElementById('o-daymiles').textContent = dm + ' mi';
+    document.getElementById('o-days').textContent = days + (days === 1 ? ' day' : ' days');
+    document.getElementById('o-food').textContent = food + ' lb';
+    document.getElementById('o-bags').textContent = bags.bags + ' / ' + bags.lbPerBag + ' lb';
+    document.getElementById('o-pull').textContent = pull + ' dogs';
+    document.getElementById('o-kcal').textContent =
+      'Each ' + o.weightLb + ' lb dog on ' + o.workload + ' work eats about ' +
+      SledMath.dogKcal(o.weightLb, o.workload).toLocaleString() + ' kcal/day (' +
+      SledMath.dogKibbleLb(o.weightLb, o.workload, o.kcalPerLb) + ' lb kibble).';
+  }
+  var presets = {
+    weekend: {miles:60, dogs:6, surface:'packed', tempF:15, runHours:5, weightLb:48, workload:'tour', meatPct:15, layoverEvery:0, spacing:60, loadLb:320, kcalPerLb:1500},
+    week: {miles:200, dogs:8, surface:'packed', tempF:10, runHours:8, weightLb:50, workload:'tour', meatPct:20, layoverEvery:5, spacing:60, loadLb:420, kcalPerLb:1500},
+    expedition: {miles:500, dogs:12, surface:'fresh', tempF:0, runHours:8, weightLb:52, workload:'hard', meatPct:25, layoverEvery:4, spacing:70, loadLb:600, kcalPerLb:1500},
+    coldrace: {miles:300, dogs:14, surface:'icy', tempF:-35, runHours:9, weightLb:50, workload:'race', meatPct:30, layoverEvery:2, spacing:75, loadLb:380, kcalPerLb:1600}
+  };
+  Array.prototype.forEach.call(document.querySelectorAll('.presets button'), function (b) {
+    b.addEventListener('click', function () {
+      var p = presets[b.getAttribute('data-p')];
+      if (!p) return;
+      Object.keys(p).forEach(function (k) { document.getElementById(k).value = p[k]; });
+      compute();
+    });
+  });
+  ids.forEach(function (id) {
+    document.getElementById(id).addEventListener('input', compute);
+    document.getElementById(id).addEventListener('change', compute);
+  });
+  compute();
+})();
+</script>
+</body>
+</html>
